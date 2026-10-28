@@ -97,8 +97,9 @@ export const MyProfileView: React.FC = () => {
           skills: data.skills || [],
           onboarding_completed: Boolean(data.onboarding_completed),
         };
-        setForm(merged);
-        setInitialForm(merged);
+        const cloned = JSON.parse(JSON.stringify(merged));
+        setForm(cloned);
+        setInitialForm(JSON.parse(JSON.stringify(merged)));
       }
     } catch (err: any) {
       setError(err?.message || 'Failed to load profile record');
@@ -147,8 +148,9 @@ export const MyProfileView: React.FC = () => {
         max_education_budget: Number(form.max_education_budget),
       });
 
-      setForm((prev) => ({ ...prev, ...updated }));
-      setInitialForm((prev) => ({ ...prev, ...updated } as StudentProfileData));
+      const updatedCloned = JSON.parse(JSON.stringify({ ...form, ...updated }));
+      setForm(updatedCloned);
+      setInitialForm(JSON.parse(JSON.stringify(updatedCloned)));
 
       success('Profile Saved', 'Your academic profile and counseling preferences were successfully updated in the database.');
     } catch (err: any) {
@@ -160,7 +162,7 @@ export const MyProfileView: React.FC = () => {
 
   const handleReset = () => {
     if (initialForm) {
-      setForm(initialForm);
+      setForm(JSON.parse(JSON.stringify(initialForm)));
       info('Changes Reverted', 'Form restored to last saved database state.');
     }
   };
@@ -194,48 +196,50 @@ export const MyProfileView: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Top Summary Card */}
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-violet-900 to-purple-900 text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white text-2xl font-bold">
+        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-violet-950 via-violet-900 to-purple-900 text-white shadow-lg border border-violet-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white text-xl sm:text-2xl font-bold shrink-0 shadow-inner">
               {form.user_name ? form.user_name.charAt(0).toUpperCase() : 'S'}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-extrabold">{form.user_name || 'Student Aspirant'}</h2>
-                <Badge variant="primary" className="bg-white/20 text-white text-[11px] border-white/30">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-extrabold truncate text-white">{form.user_name || 'Student Aspirant'}</h2>
+                <Badge variant="primary" className="bg-white/20 text-white text-[11px] border-white/30 shrink-0">
                   {form.community || 'BC'} Quota
                 </Badge>
               </div>
-              <p className="text-xs text-violet-200 mt-0.5">{form.user_email || 'student@carryyear.in'}</p>
-              <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-violet-100">
+              <p className="text-xs text-violet-200 mt-0.5 truncate">{form.user_email || 'student@carryyear.in'}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-violet-100">
                 <span>📍 {form.district}, {form.state}</span>
-                <span>•</span>
+                <span className="hidden sm:inline text-violet-400">•</span>
                 <span>🎓 {form.stream || 'Class 12'}</span>
-                <span>•</span>
+                <span className="hidden sm:inline text-violet-400">•</span>
                 <span className="font-semibold text-emerald-300">TNEA Cutoff Est: {calcCutoff()} / 200</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end md:self-auto">
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
             <Button
               type="button"
-              variant="outline"
+              variant="header-outline"
               size="sm"
               onClick={handleReset}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9"
+              leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+              className="text-xs font-semibold h-9 px-3.5"
             >
-              <RotateCcw className="w-3.5 h-3.5 mr-1" />
               Reset
             </Button>
             <Button
               type="submit"
+              variant="header-solid"
               size="sm"
               disabled={saving}
-              className="bg-white text-violet-900 hover:bg-violet-50 font-bold text-xs h-9 shadow-sm"
+              isLoading={saving}
+              leftIcon={<Save className="w-3.5 h-3.5" />}
+              className="text-xs font-bold h-9 px-4.5"
             >
-              <Save className="w-3.5 h-3.5 mr-1" />
-              {saving ? 'Saving...' : 'Save Profile'}
+              Save Profile
             </Button>
           </div>
         </div>
