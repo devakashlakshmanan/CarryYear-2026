@@ -18,7 +18,7 @@ import { Button } from '../../components/ui/Button';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { ProgressBar } from '../../components/ui/ProgressBar';
-import { educationPathwaysApi } from '../../services/api';
+import { educationPathwaysApi, profileApi, recommendationApi } from '../../services/api';
 import type { EducationPathway, PathwayListItem } from '../../types/pathway';
 
 export const EducationPathwaysView: React.FC = () => {
@@ -38,14 +38,28 @@ export const EducationPathwaysView: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const list = await educationPathwaysApi.getPathwaysList();
+        const [list, profile, recs] = await Promise.all([
+          educationPathwaysApi.getPathwaysList(),
+          profileApi.getProfile().catch(() => null),
+          recommendationApi.getRecommendations().catch(() => null)
+        ]);
         setPathwayList(list);
 
-        // Determine initial career: check URL param or pick first
+        // Determine initial career: check URL param > student target_career > top recommendation > first catalog item
         const paramCareer = searchParams.get('career');
-        const defaultSlug = paramCareer && list.some((c) => c.slug === paramCareer)
-          ? paramCareer
-          : list[0]?.slug || 'data-scientist';
+        let defaultSlug = '';
+        if (paramCareer && list.some((c) => c.slug === paramCareer)) {
+          defaultSlug = paramCareer;
+        } else if (profile?.target_career) {
+          const match = list.find((c) => c.title.toLowerCase().includes(profile.target_career!.toLowerCase()));
+          if (match) defaultSlug = match.slug;
+        }
+        if (!defaultSlug && recs?.recommendations && recs.recommendations.length > 0) {
+          defaultSlug = recs.recommendations[0].slug;
+        }
+        if (!defaultSlug) {
+          defaultSlug = list[0]?.slug || 'data-scientist';
+        }
 
         setSelectedSlug(defaultSlug);
       } catch (err: any) {

@@ -36,4 +36,13 @@ class RecommendationResponse(BaseModel):
     user_id: int
     total_evaluated: int
     dominant_cluster: str
+    recommendation_mode: str = "full" # "full", "partial_profile_baseline"
+    data_completeness: dict = Field(default_factory=dict)
+    missing_inputs: List[str] = Field(default_factory=list)
+    disclaimer: str = (
+        "Compatibility scores represent multidimensional alignment between your verified profile "
+        "and Tamil Nadu education/career benchmarks. These are explainable decision-intelligence aids, "
+        "not deterministic predictions or employment guarantees."
+    )
     recommendations: List[CareerRecommendationOut]
+

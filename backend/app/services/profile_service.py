@@ -34,6 +34,14 @@ class ProfileService:
 
         db.commit()
         db.refresh(profile)
+
+        # Automatically refresh Career DNA with updated profile data
+        try:
+            from app.services.career_dna_service import CareerDNAService
+            CareerDNAService.generate_career_dna(db, user.id)
+        except Exception:
+            pass
+
         return profile
 
     @staticmethod
@@ -49,6 +57,9 @@ class ProfileService:
             district=profile.district,
             city=profile.city,
             current_education_level=profile.current_education_level,
+            community=profile.community or "OC",
+            is_first_graduate=profile.is_first_graduate or False,
+            is_govt_school=profile.is_govt_school or False,
             school_or_college=profile.school_or_college,
             board_or_university=profile.board_or_university,
             stream=profile.stream,
@@ -72,6 +83,7 @@ class ProfileService:
             target_career=profile.target_career,
             higher_study_interest=profile.higher_study_interest or False,
             onboarding_completed=profile.onboarding_completed,
+            website_preferences=profile.website_preferences or {},
             created_at=profile.created_at,
             updated_at=profile.updated_at
         )

@@ -14,19 +14,43 @@ import { Button } from '../../components/ui/Button';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { scholarshipApi } from '../../services/api';
+import { scholarshipApi, profileApi } from '../../services/api';
 import type { ScholarshipMatchingResponse } from '../../types/more_features';
 
 export const ScholarshipMatchingView: React.FC = () => {
   const [data, setData] = useState<ScholarshipMatchingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  // Filters
-  const [community, setCommunity] = useState<string>('BC');
-  const [isFirstGraduate, setIsFirstGraduate] = useState<boolean>(true);
+  // Filters grounded in authenticated profile
+  const [community, setCommunity] = useState<string>('OC');
+  const [isFirstGraduate, setIsFirstGraduate] = useState<boolean>(false);
   const [isGovtSchool, setIsGovtSchool] = useState<boolean>(false);
   const [tab, setTab] = useState<'eligible' | 'all'>('eligible');
+
+  // Load student profile once on mount
+  useEffect(() => {
+    const loadStudentProfile = async () => {
+      try {
+        const p = await profileApi.getProfile();
+        if (p) {
+          if (p.community) setCommunity(p.community);
+          if (p.is_first_graduate !== undefined && p.is_first_graduate !== null) {
+            setIsFirstGraduate(Boolean(p.is_first_graduate));
+          }
+          if (p.is_govt_school !== undefined && p.is_govt_school !== null) {
+            setIsGovtSchool(Boolean(p.is_govt_school));
+          }
+        }
+      } catch (e) {
+        // Fallback to defaults
+      } finally {
+        setProfileLoaded(true);
+      }
+    };
+    loadStudentProfile();
+  }, []);
 
   const fetchMatches = async () => {
     try {
@@ -46,8 +70,10 @@ export const ScholarshipMatchingView: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchMatches();
-  }, [community, isFirstGraduate, isGovtSchool]);
+    if (profileLoaded) {
+      fetchMatches();
+    }
+  }, [profileLoaded, community, isFirstGraduate, isGovtSchool]);
 
   const handleToggleSave = async (id: number) => {
     try {

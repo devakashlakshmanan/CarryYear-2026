@@ -19,6 +19,7 @@ from app.db.models.career import (
 from app.db.models.saved_career import SavedCareer
 from app.db.models.college import College, CollegeCourse
 from app.db.models.scholarship_chat import Scholarship, SavedScholarship, ChatHistory
+from app.db.models.provenance import DataIngestionRecord
 
 __all__ = [
     "User",
@@ -40,5 +41,6 @@ __all__ = [
     "CollegeCourse",
     "Scholarship",
     "SavedScholarship",
-    "ChatHistory"
+    "ChatHistory",
+    "DataIngestionRecord"
 ]

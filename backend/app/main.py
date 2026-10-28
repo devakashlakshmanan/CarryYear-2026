@@ -17,7 +17,8 @@ from app.api.routes import (
     skills,
     roadmap,
     advisor,
-    saved
+    saved,
+    provenance
 )
 
 app = FastAPI(
@@ -75,6 +76,7 @@ app.include_router(skills.router, prefix=settings.API_V1_STR)
 app.include_router(roadmap.router, prefix=settings.API_V1_STR)
 app.include_router(advisor.router, prefix=settings.API_V1_STR)
 app.include_router(saved.router, prefix=settings.API_V1_STR)
+app.include_router(provenance.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():

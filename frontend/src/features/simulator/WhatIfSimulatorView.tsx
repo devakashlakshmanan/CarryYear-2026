@@ -11,18 +11,38 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { simulatorApi } from '../../services/api';
+import { simulatorApi, profileApi } from '../../services/api';
 import type { SimulationResult } from '../../types/more_features';
 
 export const WhatIfSimulatorView: React.FC = () => {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [defaultQuota, setDefaultQuota] = useState<string>('OC');
 
   // Scenario state
-  const [cutoffDelta, setCutoffDelta] = useState<number>(2.0);
-  const [budgetDelta, setBudgetDelta] = useState<number>(30000);
-  const [quota, setQuota] = useState<string>('BC');
+  const [cutoffDelta, setCutoffDelta] = useState<number>(0.0);
+  const [budgetDelta, setBudgetDelta] = useState<number>(0);
+  const [quota, setQuota] = useState<string>('OC');
+
+  // Load profile community
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const p = await profileApi.getProfile();
+        if (p && p.community) {
+          setDefaultQuota(p.community);
+          setQuota(p.community);
+        }
+      } catch (e) {
+        // use defaults
+      } finally {
+        setProfileLoaded(true);
+      }
+    };
+    loadProfile();
+  }, []);
 
   const runSimulation = async () => {
     try {
@@ -42,8 +62,10 @@ export const WhatIfSimulatorView: React.FC = () => {
   };
 
   useEffect(() => {
-    runSimulation();
-  }, [cutoffDelta, budgetDelta, quota]);
+    if (profileLoaded) {
+      runSimulation();
+    }
+  }, [profileLoaded, cutoffDelta, budgetDelta, quota]);
 
   const formatINR = (val: number) => `₹${val.toLocaleString('en-IN')}`;
   const formatLPA = (val: number) => `₹${(val / 100000).toFixed(1)} LPA`;
@@ -63,7 +85,7 @@ export const WhatIfSimulatorView: React.FC = () => {
       <Card className="p-6 border-zinc-200/80 shadow-sm bg-white space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
           <span className="text-xs font-bold uppercase tracking-wider text-zinc-800 flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-indigo-600" />
+            <Sliders className="w-4 h-4 text-violet-700" />
             Scenario Variance Sliders
           </span>
           <Button
@@ -72,7 +94,7 @@ export const WhatIfSimulatorView: React.FC = () => {
             onClick={() => {
               setCutoffDelta(0);
               setBudgetDelta(0);
-              setQuota('OC');
+              setQuota(defaultQuota);
             }}
             className="text-xs h-8"
           >
@@ -104,7 +126,7 @@ export const WhatIfSimulatorView: React.FC = () => {
               step="0.5"
               value={cutoffDelta}
               onChange={(e) => setCutoffDelta(Number(e.target.value))}
-              className="w-full accent-indigo-600"
+              className="w-full accent-violet-700"
             />
             <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
               <span>-15.0 Marks</span>
@@ -136,7 +158,7 @@ export const WhatIfSimulatorView: React.FC = () => {
               step="5000"
               value={budgetDelta}
               onChange={(e) => setBudgetDelta(Number(e.target.value))}
-              className="w-full accent-indigo-600"
+              className="w-full accent-violet-700"
             />
             <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
               <span>-₹60,000</span>
@@ -151,7 +173,7 @@ export const WhatIfSimulatorView: React.FC = () => {
             <select
               value={quota}
               onChange={(e) => setQuota(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-zinc-200 bg-zinc-50 font-medium outline-none"
+              className="w-full p-2.5 rounded-xl border border-zinc-200 bg-zinc-50 font-medium outline-none focus:border-violet-600"
             >
               <option value="OC">Open Competition (OC)</option>
               <option value="BC">Backward Class (BC)</option>
@@ -167,7 +189,7 @@ export const WhatIfSimulatorView: React.FC = () => {
 
       {loading && (
         <div className="py-12">
-          <LoadingState message="Simulating admission probabilities across Tamil Nadu colleges..." />
+          <LoadingState message="Simulating admission scenarios across Tamil Nadu colleges..." />
         </div>
       )}
 
@@ -184,7 +206,7 @@ export const WhatIfSimulatorView: React.FC = () => {
             <div className="p-4 rounded-xl bg-white border border-zinc-200 shadow-sm space-y-1">
               <span className="text-zinc-500 font-medium">Cut-Off Shift</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-xl font-extrabold text-indigo-600">
+                <span className="text-xl font-extrabold text-violet-700">
                   {result.simulated_cutoff.toFixed(1)} / 200
                 </span>
                 <span className="text-zinc-400 text-[10px]">
@@ -199,7 +221,7 @@ export const WhatIfSimulatorView: React.FC = () => {
                 <span className="text-xl font-extrabold text-emerald-600">
                   {result.target_colleges_count} Options
                 </span>
-                <span className="text-emerald-700 text-[10px] font-semibold">High Probability</span>
+                <span className="text-emerald-700 text-[10px] font-semibold">Historical High Fit</span>
               </div>
             </div>
 
@@ -219,21 +241,26 @@ export const WhatIfSimulatorView: React.FC = () => {
                 <span className="text-xl font-extrabold text-purple-600">
                   {result.safe_colleges_count} Options
                 </span>
-                <span className="text-purple-700 text-[10px] font-semibold">Guaranteed Seats</span>
+                <span className="text-purple-700 text-[10px] font-semibold">Historical Safe Fit</span>
               </div>
             </div>
           </div>
 
           {/* AI Simulation Insights */}
           <Card className="p-5 border-zinc-200/80 shadow-sm bg-white space-y-3">
-            <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-500" />
-              Scenario Analysis & Insights
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" />
+                Scenario Analysis & Insights
+              </h3>
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100 font-medium">
+                {result.cutoff_source_year || 'TNEA 2024 Reference Cutoffs'}
+              </span>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               {result.insights.map((insight, i) => (
                 <div key={i} className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 flex items-start gap-2">
-                  <div className="w-2 h-2 rounded-full bg-indigo-600 mt-1.5 shrink-0" />
+                  <div className="w-2 h-2 rounded-full bg-violet-600 mt-1.5 shrink-0" />
                   <span className="text-zinc-700 leading-relaxed font-medium">{insight}</span>
                 </div>
               ))}
@@ -245,7 +272,7 @@ export const WhatIfSimulatorView: React.FC = () => {
             {/* Top Simulated College Matches */}
             <Card className="p-5 border-zinc-200/80 shadow-sm bg-white space-y-3">
               <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-indigo-600" />
+                <Building2 className="w-4 h-4 text-violet-700" />
                 Simulated College Opportunities
               </h3>
               <div className="space-y-2.5">
@@ -266,7 +293,7 @@ export const WhatIfSimulatorView: React.FC = () => {
             {/* Top Recommended Career Trajectories */}
             <Card className="p-5 border-zinc-200/80 shadow-sm bg-white space-y-3">
               <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                <Compass className="w-4 h-4 text-indigo-600" />
+                <Compass className="w-4 h-4 text-violet-700" />
                 Aligned Career Trajectories
               </h3>
               <div className="space-y-2.5">
@@ -284,6 +311,12 @@ export const WhatIfSimulatorView: React.FC = () => {
                 ))}
               </div>
             </Card>
+          </div>
+
+          {/* Historical Reference Notice */}
+          <div className="p-3.5 rounded-xl bg-violet-50/70 border border-violet-100 text-[11px] text-zinc-600 leading-relaxed">
+            <span className="font-semibold text-violet-900 mr-1">Counseling Notice:</span>
+            {result.disclaimer || 'Past cutoffs serve as benchmark reference data from previous counseling cycles. Actual seat allotment is determined by real-time counseling demand and reservation normalization.'}
           </div>
         </div>
       )}

@@ -57,12 +57,59 @@ class RecommendationService:
             for s in scores:
                 assessment_scores[s.dimension] = s.normalized_score
 
+        # Check completeness of student profile & inputs
+        has_academic_marks = profile.percentage_or_cgpa is not None and profile.percentage_or_cgpa > 0
+        has_assessment = bool(latest_attempt and assessment_scores)
+        has_interests = bool(profile.interests and len(profile.interests) > 0)
+        has_skills = bool(profile.skills and len(profile.skills) > 0)
+        has_budget = bool(profile.max_education_budget is not None and profile.max_education_budget > 0)
+        has_location = bool(profile.preferred_locations or profile.district)
+
+        data_completeness = {
+            "academic_marks": has_academic_marks,
+            "aptitude_assessment": has_assessment,
+            "interests": has_interests,
+            "skills": has_skills,
+            "budget": has_budget,
+            "location": has_location
+        }
+
+        missing_inputs: List[str] = []
+        if not has_academic_marks:
+            missing_inputs.append("Academic marks/CGPA not specified in profile.")
+        if not has_assessment:
+            missing_inputs.append("Aptitude assessment not yet completed.")
+        if not has_interests:
+            missing_inputs.append("Expressed career interests not specified.")
+        if not has_skills:
+            missing_inputs.append("Declared student skills not specified.")
+        if not has_budget:
+            missing_inputs.append("Education budget not specified; using neutral baseline.")
+
+        recommendation_mode = "comprehensive" if (has_academic_marks and has_assessment and has_interests) else "partial"
+
+        # Dynamic factor weighting when inputs are missing
+        w_academic = 0.20 if has_academic_marks else 0.0
+        w_aptitude = 0.25 if has_assessment else 0.0
+        w_interest = 0.20 if has_interests else 0.10
+        w_skill = 0.15 if has_skills else 0.05
+        w_financial = 0.10 if has_budget else 0.05
+        w_location = 0.10
+
+        total_weight = w_academic + w_aptitude + w_interest + w_skill + w_financial + w_location
+        if total_weight > 0:
+            w_academic /= total_weight
+            w_aptitude /= total_weight
+            w_interest /= total_weight
+            w_skill /= total_weight
+            w_financial /= total_weight
+            w_location /= total_weight
+
         # Extract Student Profile Features
-        academic_percentage = float(profile.percentage_or_cgpa or 70.0)
+        academic_percentage = float(profile.percentage_or_cgpa) if has_academic_marks else 0.0
         subject_marks = profile.subject_marks or {}
-        math_mark = float(subject_marks.get("Mathematics") or subject_marks.get("Maths") or academic_percentage)
+        math_mark = float(subject_marks.get("Mathematics") or subject_marks.get("Maths") or (academic_percentage if has_academic_marks else 60.0))
         cs_mark = float(subject_marks.get("Computer Science") or subject_marks.get("Computer") or math_mark)
-        science_mark = float(subject_marks.get("Physics") or subject_marks.get("Science") or academic_percentage)
         stream_str = (profile.stream or "").lower()
 
         student_skills_raw = profile.skills or []
@@ -76,15 +123,21 @@ class RecommendationService:
         student_interests_raw = profile.interests or []
         student_interests: Set[str] = {i.lower() for i in student_interests_raw}
 
-        student_budget = float(profile.max_education_budget or 120000.0)
+        student_budget = float(profile.max_education_budget) if has_budget else None
         preferred_districts = [d.lower() for d in (profile.preferred_locations or [profile.district or "Tamil Nadu"])]
         target_career_str = (profile.target_career or "").lower()
 
-        # Aptitude baselines
-        logical_apt = assessment_scores.get("Logical Reasoning", academic_percentage * 0.85)
-        numerical_apt = assessment_scores.get("Numerical Reasoning", math_mark * 0.85)
-        analytical_apt = assessment_scores.get("Analytical Reasoning", (math_mark + cs_mark) / 2 * 0.85)
-        verbal_apt = assessment_scores.get("Verbal Reasoning", 70.0)
+        # Aptitude evaluation (uses assessment if available, otherwise transparent baseline)
+        if has_assessment:
+            logical_apt = assessment_scores.get("Logical Reasoning", 70.0)
+            numerical_apt = assessment_scores.get("Numerical Reasoning", 70.0)
+            analytical_apt = assessment_scores.get("Analytical Reasoning", 70.0)
+            verbal_apt = assessment_scores.get("Verbal Reasoning", 70.0)
+        else:
+            logical_apt = 65.0
+            numerical_apt = 65.0
+            analytical_apt = 65.0
+            verbal_apt = 65.0
 
         # Interest baselines
         tech_interest = assessment_scores.get("Technology", 85.0 if "technology" in student_interests else 60.0)
@@ -107,22 +160,25 @@ class RecommendationService:
         recommendation_list: List[CareerRecommendationOut] = []
 
         for career in careers:
-            # 1. Academic Fit (20%)
-            stream_compat = 70.0
-            if "information technology" in career.industry.lower() or "manufacturing" in career.industry.lower():
-                if any(x in stream_compat_check for stream_compat_check in [stream_str] for x in ["math", "pcm", "computer", "science", "engineering"]):
-                    stream_compat = 95.0
-            elif "healthcare" in career.industry.lower():
-                if any(x in stream_str for x in ["bio", "science", "medical"]):
-                    stream_compat = 95.0
-                elif "math" in stream_str:
-                    stream_compat = 85.0  # Biomedical engineering is open to PCM
+            # 1. Academic Fit
+            if has_academic_marks:
+                stream_compat = 70.0
+                if "information technology" in career.industry.lower() or "manufacturing" in career.industry.lower():
+                    if any(x in stream_str for x in ["math", "pcm", "computer", "science", "engineering"]):
+                        stream_compat = 95.0
+                elif "healthcare" in career.industry.lower():
+                    if any(x in stream_str for x in ["bio", "science", "medical"]):
+                        stream_compat = 95.0
+                    elif "math" in stream_str:
+                        stream_compat = 85.0
+                else:
+                    stream_compat = 90.0
+
+                academic_fit = round(min(100.0, (academic_percentage * 0.5) + (stream_compat * 0.3) + (math_mark * 0.2)), 1)
             else:
-                stream_compat = 90.0  # Business/Design open across streams
+                academic_fit = 50.0  # Unassessed placeholder in factor breakdown
 
-            academic_fit = round(min(100.0, (academic_percentage * 0.5) + (stream_compat * 0.3) + (math_mark * 0.2)), 1)
-
-            # 2. Aptitude Fit (25%)
+            # 2. Aptitude Fit
             if "information technology" in career.industry.lower():
                 aptitude_fit = round((analytical_apt * 0.40) + (logical_apt * 0.35) + (numerical_apt * 0.25), 1)
             elif "manufacturing" in career.industry.lower():
@@ -135,7 +191,7 @@ class RecommendationService:
                 aptitude_fit = round((analytical_apt * 0.40) + (verbal_apt * 0.35) + (logical_apt * 0.25), 1)
             aptitude_fit = min(100.0, max(0.0, aptitude_fit))
 
-            # 3. Interest Alignment (20%)
+            # 3. Interest Alignment
             if "information technology" in career.industry.lower():
                 interest_fit = (tech_interest * 0.50) + (research_interest * 0.25) + (science_interest * 0.25)
             elif "manufacturing" in career.industry.lower():
@@ -155,8 +211,7 @@ class RecommendationService:
 
             interest_fit = round(min(100.0, max(0.0, interest_fit)), 1)
 
-            # 4. Skill Match & Gap Analysis (15%)
-            career_skills = [cs.skill for cs in career.skill_associations if cs.skill]
+            # 4. Skill Match & Gap Analysis
             matching_skills: List[str] = []
             skill_gaps: List[str] = []
             total_skill_weight = 0.0
@@ -170,7 +225,6 @@ class RecommendationService:
                 s_name = cs.skill.name
                 s_lower = s_name.lower()
 
-                # Check if student possesses this skill or related substring
                 is_match = any(
                     user_sk in s_lower or s_lower in user_sk
                     for user_sk in student_skill_names
@@ -182,30 +236,33 @@ class RecommendationService:
                 else:
                     skill_gaps.append(s_name)
 
-            if total_skill_weight > 0:
+            if total_skill_weight > 0 and has_skills:
                 raw_skill_ratio = (earned_skill_weight / total_skill_weight) * 100.0
-                # Baseline 40% if student has solid aptitude to learn
-                skill_match = round(min(100.0, max(40.0, raw_skill_ratio * 0.7 + 30.0)), 1)
+                skill_match = round(min(100.0, max(30.0, raw_skill_ratio * 0.7 + 30.0)), 1)
+            elif not has_skills:
+                skill_match = 50.0  # Not yet assessed
             else:
                 skill_match = 75.0
 
-            # 5. Financial Feasibility (10%)
+            # 5. Financial Feasibility
             primary_course_assoc = next((ca for ca in career.course_associations if ca.is_primary and ca.course), None)
             primary_degree_name = primary_course_assoc.course.name if primary_course_assoc else (career.course_associations[0].course.name if career.course_associations else "Undergraduate Degree")
             course_fee_min = primary_course_assoc.course.average_annual_fee_min if primary_course_assoc else 45000.0
             course_fee_max = primary_course_assoc.course.average_annual_fee_max if primary_course_assoc else 150000.0
 
-            if student_budget >= course_fee_max:
-                financial_feasibility = 98.0
-            elif student_budget >= course_fee_min:
-                financial_feasibility = round(85.0 + ((student_budget - course_fee_min) / max(course_fee_max - course_fee_min, 1.0)) * 13.0, 1)
+            if student_budget is not None:
+                if student_budget >= course_fee_max:
+                    financial_feasibility = 98.0
+                elif student_budget >= course_fee_min:
+                    financial_feasibility = round(85.0 + ((student_budget - course_fee_min) / max(course_fee_max - course_fee_min, 1.0)) * 13.0, 1)
+                else:
+                    scholarship_boost = 25.0 if profile.need_scholarship else 15.0
+                    fee_ratio = (student_budget / max(course_fee_min, 1.0)) * 100.0
+                    financial_feasibility = round(min(85.0, max(50.0, fee_ratio + scholarship_boost)), 1)
             else:
-                # Scholarship offset support for Tamil Nadu candidates
-                scholarship_boost = 25.0 if profile.need_scholarship else 15.0
-                fee_ratio = (student_budget / max(course_fee_min, 1.0)) * 100.0
-                financial_feasibility = round(min(85.0, max(50.0, fee_ratio + scholarship_boost)), 1)
+                financial_feasibility = 75.0  # Neutral baseline when unstated
 
-            # 6. Location Fit (10%)
+            # 6. Location Fit
             demand_lower = career.tamil_nadu_demand.lower()
             location_match = any(dist in demand_lower for dist in preferred_districts)
             if location_match:
@@ -215,14 +272,14 @@ class RecommendationService:
             else:
                 location_fit = 78.0
 
-            # Composite Deterministic Match Score
+            # Composite Deterministic Match Score with dynamic weighting
             match_score = round(
-                (academic_fit * 0.20) +
-                (aptitude_fit * 0.25) +
-                (interest_fit * 0.20) +
-                (skill_match * 0.15) +
-                (financial_feasibility * 0.10) +
-                (location_fit * 0.10),
+                (academic_fit * w_academic) +
+                (aptitude_fit * w_aptitude) +
+                (interest_fit * w_interest) +
+                (skill_match * w_skill) +
+                (financial_feasibility * w_financial) +
+                (location_fit * w_location),
                 1
             )
 
@@ -236,19 +293,21 @@ class RecommendationService:
 
             # Formulate Explainable Narrative
             top_factors = []
-            if academic_fit >= 85.0:
-                top_factors.append(f"strong academic foundation in {profile.stream or 'your curriculum'} ({academic_percentage}%)")
-            if aptitude_fit >= 80.0:
+            if has_academic_marks and academic_fit >= 80.0:
+                top_factors.append(f"strong academic foundation in {profile.stream or 'curriculum'} ({academic_percentage}%)")
+            if has_assessment and aptitude_fit >= 75.0:
                 top_factors.append(f"high cognitive reasoning alignment ({aptitude_fit}%)")
-            if interest_fit >= 80.0:
-                top_factors.append(f"pronounced interest in {career.industry} ({interest_fit}%)")
+            if interest_fit >= 75.0:
+                top_factors.append(f"interest in {career.industry} ({interest_fit}%)")
 
-            top_factors_str = ", ".join(top_factors) if top_factors else "solid overall indicator compatibility"
-            gap_summary = f" Closing {len(skill_gaps)} key skill gap(s) including {', '.join(skill_gaps[:2])} will maximize placement competitiveness." if skill_gaps else " Complete skill coverage already demonstrated."
+            top_factors_str = ", ".join(top_factors) if top_factors else "multi-factor alignment"
+            gap_summary = f" Closing {len(skill_gaps)} key skill gap(s) like {', '.join(skill_gaps[:2])} will maximize competitiveness." if skill_gaps else " Complete skill coverage demonstrated."
+            if not has_assessment:
+                gap_summary += " Note: Take the cognitive assessment to refine this score with measured aptitude."
 
             explanation = (
-                f"Matched with {match_score}% confidence driven by {top_factors_str}. "
-                f"Supported by strong regional demand across {career.tamil_nadu_demand.split('across')[-1].strip()}."
+                f"Matched with {match_score}% fit driven by {top_factors_str}. "
+                f"Supported by regional demand in Tamil Nadu."
                 f"{gap_summary}"
             )
 
@@ -289,5 +348,12 @@ class RecommendationService:
             user_id=user_id,
             total_evaluated=len(recommendation_list),
             dominant_cluster=dominant_cluster,
+            recommendation_mode=recommendation_mode,
+            data_completeness=data_completeness,
+            missing_inputs=missing_inputs,
+            disclaimer=(
+                "Recommendations are explainable decision-support estimates based on current inputs "
+                "and do not constitute employment or admission guarantees."
+            ),
             recommendations=recommendation_list
         )

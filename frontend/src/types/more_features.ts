@@ -63,6 +63,17 @@ export interface FinancialPlan {
   expected_monthly_gross: number;
   emi_to_income_ratio_percent: number;
   investment_payback_years: number;
+  is_college_selected?: boolean;
+  is_career_selected?: boolean;
+  fee_source?: string;
+  academic_year?: string;
+  annual_food_living?: number;
+  annual_transport?: number;
+  annual_books_equipment?: number;
+  tuition_is_custom?: boolean;
+  hostel_is_custom?: boolean;
+  budget_is_custom?: boolean;
+  disclaimer?: string;
   actionable_recommendations: string[];
 }
 
@@ -76,6 +87,8 @@ export interface SimulationResult {
   target_colleges_count: number;
   safe_colleges_count: number;
   total_admission_options: number;
+  cutoff_source_year?: string;
+  disclaimer?: string;
   top_recommended_colleges: Array<{
     college_name: string;
     district: string;

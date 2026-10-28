@@ -11,6 +11,9 @@ export interface StudentProfileData {
   district?: string;
   city?: string;
   current_education_level?: string;
+  community?: string;
+  is_first_graduate?: boolean;
+  is_govt_school?: boolean;
 
   // Step 2: Academics
   school_or_college?: string;
@@ -46,4 +49,5 @@ export interface StudentProfileData {
   target_career?: string;
   higher_study_interest?: boolean;
   onboarding_completed: boolean;
+  website_preferences?: Record<string, any>;
 }

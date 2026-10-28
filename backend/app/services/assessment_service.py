@@ -178,6 +178,13 @@ class AssessmentService:
         db.commit()
         db.refresh(attempt)
 
+        # Automatically refresh Career DNA with newly calculated aptitude and interest scores
+        try:
+            from app.services.career_dna_service import CareerDNAService
+            CareerDNAService.generate_career_dna(db, user_id)
+        except Exception:
+            pass
+
         all_dimension_scores = aptitude_dimension_scores + interest_dimension_scores
 
         return AssessmentResultResponse(

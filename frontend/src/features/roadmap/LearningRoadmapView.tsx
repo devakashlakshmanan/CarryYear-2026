@@ -13,20 +13,32 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { roadmapApi } from '../../services/api';
+import { roadmapApi, educationPathwaysApi } from '../../services/api';
 import type { LearningRoadmap } from '../../types/more_features';
+import type { PathwayListItem } from '../../types/pathway';
 
 export const LearningRoadmapView: React.FC = () => {
   const [roadmap, setRoadmap] = useState<LearningRoadmap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [careerList, setCareerList] = useState<PathwayListItem[]>([]);
+  const [selectedCareer, setSelectedCareer] = useState<string>('');
 
-  const fetchRoadmap = async () => {
+  useEffect(() => {
+    educationPathwaysApi.getPathwaysList()
+      .then((list) => setCareerList(list))
+      .catch(() => {});
+  }, []);
+
+  const fetchRoadmap = async (slug?: string) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await roadmapApi.getRoadmap();
+      const res = await roadmapApi.getRoadmap(slug || undefined);
       setRoadmap(res);
+      if (!selectedCareer && res) {
+        setSelectedCareer(res.target_career);
+      }
     } catch (err: any) {
       setError(err?.response?.data?.detail || err?.message || 'Failed to generate roadmap');
     } finally {
@@ -35,8 +47,8 @@ export const LearningRoadmapView: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchRoadmap();
-  }, []);
+    fetchRoadmap(selectedCareer);
+  }, [selectedCareer]);
 
   return (
     <div className="space-y-8 animate-fadeIn pb-16">
@@ -48,10 +60,25 @@ export const LearningRoadmapView: React.FC = () => {
           { label: 'Roadmap', path: '/roadmap' },
         ]}
         actions={
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="flex items-center gap-2">
-            <Printer className="w-4 h-4" />
-            Print Plan
-          </Button>
+          <div className="flex items-center space-x-2">
+            {careerList.length > 0 && (
+              <select
+                value={selectedCareer}
+                onChange={(e) => setSelectedCareer(e.target.value)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-zinc-200 bg-white font-medium text-zinc-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                {careerList.map((c) => (
+                  <option key={c.id} value={c.slug}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            )}
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="flex items-center gap-2 text-xs">
+              <Printer className="w-4 h-4" />
+              Print Plan
+            </Button>
+          </div>
         }
       />
 
@@ -70,11 +97,11 @@ export const LearningRoadmapView: React.FC = () => {
       {roadmap && !loading && (
         <div className="space-y-8">
           {/* Hero Banner */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-900 to-indigo-900 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-violet-700 via-purple-700 to-violet-800 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <span className="text-xs uppercase font-semibold text-purple-200">Career Learning Track</span>
+              <span className="text-xs uppercase font-semibold text-violet-200">Career Learning Track</span>
               <h2 className="text-2xl font-extrabold text-white mt-0.5">{roadmap.target_career}</h2>
-              <span className="text-xs text-purple-100/90 mt-1 block">
+              <span className="text-xs text-violet-100/90 mt-1 block">
                 {roadmap.total_duration} • Recommended Effort: {roadmap.estimated_weekly_commitment}
               </span>
             </div>
@@ -85,16 +112,16 @@ export const LearningRoadmapView: React.FC = () => {
           </div>
 
           {/* Stepper Timeline */}
-          <div className="relative pl-6 sm:pl-8 border-l-2 border-indigo-200 space-y-8">
+          <div className="relative pl-6 sm:pl-8 border-l-2 border-violet-200 space-y-8">
             {roadmap.phases.map((phase) => (
               <div key={phase.phase_number} className="relative group">
-                <div className="absolute -left-[35px] sm:-left-[43px] top-0 w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-md border-2 border-white">
+                <div className="absolute -left-[35px] sm:-left-[43px] top-0 w-8 h-8 rounded-full bg-violet-700 text-white flex items-center justify-center font-bold text-xs shadow-sm border-2 border-white">
                   {phase.phase_number}
                 </div>
 
-                <Card className="p-6 border-zinc-200/90 shadow-sm bg-white hover:border-indigo-300 transition-all space-y-4">
+                <Card className="p-6 border-zinc-200/90 shadow-xs bg-white hover:border-violet-300 transition-all space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
+                    <span className="text-xs font-bold uppercase tracking-wider text-violet-700 bg-violet-50 px-2.5 py-1 rounded-md border border-violet-100">
                       Phase {phase.phase_number}: {phase.timeline}
                     </span>
                     <span className="text-xs text-zinc-400 font-medium flex items-center gap-1">
@@ -115,7 +142,7 @@ export const LearningRoadmapView: React.FC = () => {
                     </span>
                     {phase.milestones.map((m, i) => (
                       <div key={i} className="flex items-start gap-2 text-zinc-700">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-violet-700 shrink-0 mt-0.5" />
                         <span>{m}</span>
                       </div>
                     ))}
@@ -133,10 +160,10 @@ export const LearningRoadmapView: React.FC = () => {
                           href={res.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 hover:border-indigo-300 transition-all flex items-start justify-between gap-2 group/res"
+                          className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 hover:border-violet-300 transition-all flex items-start justify-between gap-2 group/res"
                         >
                           <div>
-                            <span className="font-bold text-zinc-900 group-hover/res:text-indigo-600 block line-clamp-1">
+                            <span className="font-bold text-zinc-900 group-hover/res:text-violet-700 block line-clamp-1">
                               {res.title}
                             </span>
                             <span className="text-[11px] text-zinc-500 block">{res.provider}</span>
@@ -150,11 +177,11 @@ export const LearningRoadmapView: React.FC = () => {
                   </div>
 
                   {/* Hands-on Deliverable */}
-                  <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs text-indigo-950 flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <div className="p-3 bg-violet-50/70 rounded-xl border border-violet-100 text-xs text-violet-950 flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-700 shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold block">Deliverable / Portfolio Output:</span>
-                      <span className="mt-0.5 block text-indigo-900 leading-relaxed font-medium">
+                      <span className="mt-0.5 block text-violet-900 leading-relaxed font-medium">
                         {phase.hands_on_deliverable}
                       </span>
                     </div>
@@ -166,9 +193,9 @@ export const LearningRoadmapView: React.FC = () => {
 
           {/* Certifications & Internship Hubs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-            <Card className="p-5 border-zinc-200/80 shadow-sm bg-white space-y-3">
+            <Card className="p-5 border-zinc-200/80 shadow-xs bg-white space-y-3">
               <h4 className="font-bold text-sm text-zinc-900 flex items-center gap-2">
-                <Award className="w-4 h-4 text-indigo-600" />
+                <Award className="w-4 h-4 text-violet-700" />
                 Recommended Industry Credentials
               </h4>
               <ul className="space-y-2">
@@ -181,15 +208,15 @@ export const LearningRoadmapView: React.FC = () => {
               </ul>
             </Card>
 
-            <Card className="p-5 border-zinc-200/80 shadow-sm bg-white space-y-3">
+            <Card className="p-5 border-zinc-200/80 shadow-xs bg-white space-y-3">
               <h4 className="font-bold text-sm text-zinc-900 flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-indigo-600" />
+                <Briefcase className="w-4 h-4 text-violet-700" />
                 Tamil Nadu Tech Internship Exchanges
               </h4>
               <ul className="space-y-2">
                 {roadmap.tamil_nadu_internship_portals.map((portal, i) => (
                   <li key={i} className="flex items-center gap-2 p-2.5 rounded-lg bg-zinc-50 border border-zinc-100">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                    <div className="w-2 h-2 rounded-full bg-violet-600 shrink-0" />
                     <span className="font-semibold text-zinc-800">{portal}</span>
                   </li>
                 ))}

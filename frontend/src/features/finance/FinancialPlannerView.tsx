@@ -13,18 +13,36 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { financeApi } from '../../services/api';
+import { financeApi, profileApi } from '../../services/api';
 import type { FinancialPlan } from '../../types/more_features';
 
 export const FinancialPlannerView: React.FC = () => {
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // Simulation controls
   const [loanInterest, setLoanInterest] = useState<number>(8.5);
   const [tenureYears, setTenureYears] = useState<number>(7);
   const [customBudget, setCustomBudget] = useState<number>(120000);
+
+  // Load student's saved budget from profile on mount
+  useEffect(() => {
+    const loadStudentBudget = async () => {
+      try {
+        const p = await profileApi.getProfile();
+        if (p && p.max_education_budget) {
+          setCustomBudget(p.max_education_budget);
+        }
+      } catch (e) {
+        // use default
+      } finally {
+        setProfileLoaded(true);
+      }
+    };
+    loadStudentBudget();
+  }, []);
 
   const fetchPlan = async () => {
     try {
@@ -44,8 +62,10 @@ export const FinancialPlannerView: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchPlan();
-  }, [loanInterest, tenureYears, customBudget]);
+    if (profileLoaded) {
+      fetchPlan();
+    }
+  }, [profileLoaded, loanInterest, tenureYears, customBudget]);
 
   const formatINR = (val: number) => `₹${val.toLocaleString('en-IN')}`;
 
@@ -64,7 +84,7 @@ export const FinancialPlannerView: React.FC = () => {
       <Card className="p-5 border-zinc-200/80 shadow-sm bg-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-zinc-100 gap-2 mb-4">
           <span className="text-xs font-bold uppercase tracking-wider text-zinc-800 flex items-center gap-2">
-            <Calculator className="w-4 h-4 text-indigo-600" />
+            <Calculator className="w-4 h-4 text-violet-600" />
             Financial Scenario Inputs
           </span>
           <Button variant="outline" size="sm" onClick={fetchPlan} className="text-xs h-8">
@@ -77,7 +97,7 @@ export const FinancialPlannerView: React.FC = () => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="font-semibold text-zinc-600">Annual Family Budget</label>
-              <span className="font-bold text-indigo-600">{formatINR(customBudget)}</span>
+              <span className="font-bold text-violet-700">{formatINR(customBudget)}</span>
             </div>
             <input
               type="range"
@@ -86,14 +106,14 @@ export const FinancialPlannerView: React.FC = () => {
               step="10000"
               value={customBudget}
               onChange={(e) => setCustomBudget(Number(e.target.value))}
-              className="w-full accent-indigo-600"
+              className="w-full accent-violet-700"
             />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="font-semibold text-zinc-600">Loan Interest Rate</label>
-              <span className="font-bold text-indigo-600">{loanInterest}% p.a.</span>
+              <span className="font-bold text-violet-700">{loanInterest}% p.a.</span>
             </div>
             <input
               type="range"
@@ -102,7 +122,7 @@ export const FinancialPlannerView: React.FC = () => {
               step="0.25"
               value={loanInterest}
               onChange={(e) => setLoanInterest(Number(e.target.value))}
-              className="w-full accent-indigo-600"
+              className="w-full accent-violet-700"
             />
             <span className="text-[10px] text-zinc-400">SBI Scholar / Canara Vidya rates</span>
           </div>
@@ -110,7 +130,7 @@ export const FinancialPlannerView: React.FC = () => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="font-semibold text-zinc-600">Repayment Tenure</label>
-              <span className="font-bold text-indigo-600">{tenureYears} Years</span>
+              <span className="font-bold text-violet-700">{tenureYears} Years</span>
             </div>
             <input
               type="range"
@@ -119,7 +139,7 @@ export const FinancialPlannerView: React.FC = () => {
               step="1"
               value={tenureYears}
               onChange={(e) => setTenureYears(Number(e.target.value))}
-              className="w-full accent-indigo-600"
+              className="w-full accent-violet-700"
             />
             <span className="text-[10px] text-zinc-400">Post-moratorium repayment period</span>
           </div>
@@ -141,40 +161,47 @@ export const FinancialPlannerView: React.FC = () => {
       {plan && !loading && (
         <div className="space-y-6">
           {/* Executive Overview Banner */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-900 to-purple-900 text-white shadow-xl space-y-4">
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-violet-900 to-purple-900 text-white shadow-xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="text-xs uppercase font-semibold text-indigo-200">Financial Feasibility Status</span>
+                <span className="text-xs uppercase font-semibold text-violet-200">Financial Feasibility Status</span>
                 <h2 className="text-2xl font-extrabold text-white mt-0.5">{plan.financial_feasibility_tier}</h2>
               </div>
-              <Badge variant="primary" className="bg-white/20 text-white text-xs border-white/30">
-                {plan.college_name}
-              </Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="primary" className="bg-white/20 text-white text-xs border-white/30">
+                  {plan.college_name}
+                </Badge>
+                {plan.fee_source && (
+                  <span className="px-2.5 py-1 bg-violet-800/80 text-[10px] font-medium rounded-full text-violet-100 border border-violet-400/30">
+                    Source: {plan.fee_source} ({plan.academic_year || '2024-2025'})
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
               <div className="p-3 bg-white/10 rounded-xl border border-white/10">
-                <span className="text-[10px] uppercase font-semibold text-indigo-200 block">Total Degree Cost</span>
+                <span className="text-[10px] uppercase font-semibold text-violet-200 block">Total Degree Cost</span>
                 <span className="text-lg font-bold text-white block mt-0.5">{formatINR(plan.total_degree_cost)}</span>
-                <span className="text-[10px] text-indigo-200/80">4 Years (Tuition + Living)</span>
+                <span className="text-[10px] text-violet-200/80">4 Years (Tuition + Living)</span>
               </div>
 
               <div className="p-3 bg-white/10 rounded-xl border border-white/10">
-                <span className="text-[10px] uppercase font-semibold text-indigo-200 block">Net Loan Needed</span>
+                <span className="text-[10px] uppercase font-semibold text-violet-200 block">Net Loan Needed</span>
                 <span className="text-lg font-bold text-amber-300 block mt-0.5">{formatINR(plan.loan_principal)}</span>
-                <span className="text-[10px] text-indigo-200/80">After Budget & Aid</span>
+                <span className="text-[10px] text-violet-200/80">After Budget & Aid</span>
               </div>
 
               <div className="p-3 bg-white/10 rounded-xl border border-white/10">
-                <span className="text-[10px] uppercase font-semibold text-indigo-200 block">Monthly Loan EMI</span>
+                <span className="text-[10px] uppercase font-semibold text-violet-200 block">Monthly Loan EMI</span>
                 <span className="text-lg font-bold text-emerald-300 block mt-0.5">{formatINR(plan.monthly_emi_amount)} / mo</span>
-                <span className="text-[10px] text-indigo-200/80">{plan.emi_to_income_ratio_percent}% of Starting Salary</span>
+                <span className="text-[10px] text-violet-200/80">{plan.emi_to_income_ratio_percent}% of Starting Salary</span>
               </div>
 
               <div className="p-3 bg-white/10 rounded-xl border border-white/10">
-                <span className="text-[10px] uppercase font-semibold text-indigo-200 block">Payback Period</span>
-                <span className="text-lg font-bold text-purple-300 block mt-0.5">{plan.investment_payback_years} Years</span>
-                <span className="text-[10px] text-indigo-200/80">To break even on CTC</span>
+                <span className="text-[10px] uppercase font-semibold text-violet-200 block">Payback Period</span>
+                <span className="text-lg font-bold text-purple-200 block mt-0.5">{plan.investment_payback_years} Years</span>
+                <span className="text-[10px] text-violet-200/80">To break even on CTC</span>
               </div>
             </div>
           </div>
@@ -184,7 +211,7 @@ export const FinancialPlannerView: React.FC = () => {
             {/* Degree Cost vs Available Funding */}
             <Card className="p-5 border-zinc-200/80 shadow-sm bg-white space-y-4">
               <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-indigo-600" />
+                <DollarSign className="w-4 h-4 text-violet-700" />
                 Comprehensive 4-Year Cost vs. Available Funding
               </h3>
 
@@ -198,10 +225,14 @@ export const FinancialPlannerView: React.FC = () => {
                   <span className="font-bold text-zinc-900">{formatINR(plan.annual_hostel_fee)}</span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-zinc-100">
-                  <span className="text-zinc-600">Annual Books, Project & Living</span>
-                  <span className="font-bold text-zinc-900">{formatINR(plan.annual_living_expenses)}</span>
+                  <span className="text-zinc-600">Annual Food & Living Expenses</span>
+                  <span className="font-bold text-zinc-900">{formatINR(plan.annual_food_living || 15000)}</span>
                 </div>
-                <div className="flex justify-between py-2 bg-indigo-50/50 px-2 rounded-lg font-bold text-indigo-950">
+                <div className="flex justify-between py-1.5 border-b border-zinc-100">
+                  <span className="text-zinc-600">Annual Books, Supplies & Transport</span>
+                  <span className="font-bold text-zinc-900">{formatINR((plan.annual_books_equipment || 10000) + (plan.annual_transport || 8000))}</span>
+                </div>
+                <div className="flex justify-between py-2 bg-violet-50/60 px-2 rounded-lg font-bold text-violet-950">
                   <span>Total 4-Year Degree Expenditure</span>
                   <span>{formatINR(plan.total_degree_cost)}</span>
                 </div>
@@ -226,7 +257,7 @@ export const FinancialPlannerView: React.FC = () => {
             {/* Loan Amortization & Repayment */}
             <Card className="p-5 border-zinc-200/80 shadow-sm bg-white space-y-4">
               <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                <Percent className="w-4 h-4 text-indigo-600" />
+                <Percent className="w-4 h-4 text-violet-700" />
                 Education Loan Amortization Details
               </h3>
 
@@ -262,7 +293,7 @@ export const FinancialPlannerView: React.FC = () => {
           {/* Actionable Recommendations */}
           <Card className="p-5 border-zinc-200/80 shadow-sm bg-white space-y-3">
             <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <Sparkles className="w-4 h-4 text-violet-700" />
               Strategic Financial Recommendations
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -274,6 +305,12 @@ export const FinancialPlannerView: React.FC = () => {
               ))}
             </div>
           </Card>
+
+          {/* Legal / Estimates Disclaimer */}
+          <div className="p-3.5 rounded-xl bg-violet-50/70 border border-violet-100 text-[11px] text-zinc-600 leading-relaxed">
+            <span className="font-semibold text-violet-900 mr-1">Planning Notice:</span>
+            {plan.disclaimer || 'Projections and EMI calculations are decision-support estimates based on published fee schedules and user assumptions, not formal financial advice or loan guarantees.'}
+          </div>
         </div>
       )}
     </div>

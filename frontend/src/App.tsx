@@ -21,6 +21,7 @@ import { LearningRoadmapView } from './features/roadmap/LearningRoadmapView';
 import { AIAdvisorView } from './features/advisor/AIAdvisorView';
 import { SavedHubView } from './features/saved/SavedHubView';
 import { SettingsView } from './features/settings/SettingsView';
+import { MyProfileView } from './features/profile/MyProfileView';
 import { Compass, Sparkles, GraduationCap, ArrowRight, ShieldCheck, Cpu } from 'lucide-react';
 
 function LandingPage() {
@@ -166,7 +167,7 @@ export default function App() {
             >
               <Route path="dashboard" element={<DashboardOverview />} />
               <Route path="onboarding" element={<OnboardingWizard />} />
-              <Route path="profile" element={<SettingsView />} />
+              <Route path="profile" element={<MyProfileView />} />
               <Route path="career-dna" element={<CareerDNAView />} />
               <Route path="assessment" element={<AssessmentView />} />
               <Route path="careers" element={<CareerExplorerView />} />

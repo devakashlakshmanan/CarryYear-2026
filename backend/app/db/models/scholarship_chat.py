@@ -23,6 +23,13 @@ class Scholarship(Base):
     required_documents = Column(JSON, default=list)
     application_portal_url = Column(String(255), nullable=True)
     deadline_info = Column(String(100), default="Annual TNEA Counseling Season")
+    
+    # Data Provenance & Verification
+    source_name = Column(String(150), default="National Scholarship Portal / TN Welfare Dept")
+    academic_year = Column(String(20), default="2024-2025")
+    verification_status = Column(String(50), default="verified") # verified, officially_sourced, historical, synthetic_demo
+    last_verified_at = Column(DateTime(timezone=True), nullable=True, server_default=func.now())
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class SavedScholarship(Base):

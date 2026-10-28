@@ -22,6 +22,11 @@ class SimulationResultOut(BaseModel):
     target_colleges_count: int
     safe_colleges_count: int
     total_admission_options: int
+    cutoff_source_year: str = "TNEA 2024 Counseling Archive"
+    disclaimer: str = (
+        "Historical cutoffs serve as benchmark reference points. Actual admission depends on annual applicant "
+        "distributions, seat matrix, and counseling normalization."
+    )
     top_recommended_colleges: List[dict]
     career_options: List[dict]
     insights: List[str]
@@ -32,25 +37,34 @@ class SimulatorService:
         profile = db.query(StudentProfile).filter(StudentProfile.user_id == user_id).first()
 
         base_cutoff = 185.0
-        if profile and profile.subject_marks:
-            m = profile.subject_marks.get("Mathematics") or 90
-            p = profile.subject_marks.get("Physics") or 90
-            c = profile.subject_marks.get("Chemistry") or 90
-            base_cutoff = float(m) + (float(p) / 2.0) + (float(c) / 2.0)
-        elif profile and profile.percentage_or_cgpa:
-            v = profile.percentage_or_cgpa
-            base_cutoff = v * 20.0 if v <= 10.0 else v * 2.0
+        if profile:
+            marks = profile.subject_marks or {}
+            m = marks.get("Mathematics") or marks.get("Maths") or marks.get("maths")
+            p = marks.get("Physics") or marks.get("physics")
+            c = marks.get("Chemistry") or marks.get("chemistry")
+            if m is not None and p is not None and c is not None:
+                try:
+                    base_cutoff = float(m) + (float(p) / 2.0) + (float(c) / 2.0)
+                except (ValueError, TypeError):
+                    base_cutoff = 185.0
+            elif profile.percentage_or_cgpa:
+                v = float(profile.percentage_or_cgpa)
+                base_cutoff = v * 20.0 if v <= 10.0 else v * 2.0
 
         sim_cutoff = max(100.0, min(200.0, base_cutoff + adj.cutoff_delta))
 
         base_budget = profile.max_education_budget if profile and profile.max_education_budget else 120000.0
         sim_budget = max(25000.0, base_budget + adj.budget_delta)
 
+        sim_quota = adj.quota
+        if (not sim_quota or sim_quota == "OC") and profile and profile.community:
+            sim_quota = profile.community.upper().strip()
+
         # Run College Matching with simulated parameters
         college_res = CollegeService.match_colleges_for_student(
             db=db,
             user_id=user_id,
-            quota=adj.quota,
+            quota=sim_quota,
             custom_cutoff=sim_cutoff,
             custom_budget=sim_budget
         )

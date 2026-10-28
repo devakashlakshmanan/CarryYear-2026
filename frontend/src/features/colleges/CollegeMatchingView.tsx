@@ -36,7 +36,7 @@ export const CollegeMatchingView: React.FC = () => {
   const [matchError, setMatchError] = useState<string | null>(null);
 
   // Simulation controls
-  const [quota, setQuota] = useState<string>('OC');
+  const [quota, setQuota] = useState<string>('');
   const [simCutoff, setSimCutoff] = useState<number | undefined>(undefined);
   const [simBudget, setSimBudget] = useState<number | undefined>(undefined);
   const [targetCourse, setTargetCourse] = useState<string>('all');
@@ -62,13 +62,17 @@ export const CollegeMatchingView: React.FC = () => {
     try {
       setMatchLoading(true);
       setMatchError(null);
-      const params: any = { quota };
+      const params: any = {};
+      if (quota) params.quota = quota;
       if (simCutoff !== undefined && simCutoff > 0) params.custom_cutoff = simCutoff;
       if (simBudget !== undefined && simBudget > 0) params.custom_budget = simBudget;
       if (targetCourse !== 'all') params.target_course = targetCourse;
 
       const data = await collegeApi.getCollegeMatches(params);
       setMatchingData(data);
+      if (!quota && data.student_quota) {
+        setQuota(data.student_quota);
+      }
       if (simCutoff === undefined) {
         setSimCutoff(data.student_cutoff);
       }

@@ -8,8 +8,9 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#7C3AED',
-          dark: '#5B21B6',
+          DEFAULT: '#6D28D9',
+          hover: '#5B21B6',
+          dark: '#4C1D95',
           light: '#EDE9FE',
           50: '#F5F3FF',
           100: '#EDE9FE',
@@ -23,17 +24,21 @@ export default {
           900: '#4C1D95',
         },
         accent: {
-          DEFAULT: '#EC4899',
+          DEFAULT: '#DB2777',
           light: '#FCE7F3',
-          dark: '#BE185D',
+          dark: '#9D174D',
+        },
+        lavender: {
+          light: '#F5F3FF',
+          soft: '#EDE9FE',
         },
         app: {
-          bg: '#FAF9FF',
+          bg: '#FAF9FC',
           card: '#FFFFFF',
           sidebar: '#FFFFFF',
-          text: '#18181B',
-          muted: '#71717A',
-          border: '#E4E4E7',
+          text: '#27233A',
+          muted: '#6B667A',
+          border: '#E7E2EF',
         }
       },
       fontFamily: {

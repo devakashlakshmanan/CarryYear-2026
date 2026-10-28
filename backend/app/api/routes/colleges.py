@@ -55,7 +55,7 @@ def list_college_districts(db: Session = Depends(get_db)):
 
 @router.get("/match", response_model=dict)
 def match_colleges_for_user(
-    quota: str = Query("OC", description="Reservation Category quota (OC, BC, BCM, MBC, SC, ST)"),
+    quota: Optional[str] = Query(None, description="Reservation Category quota (OC, BC, BCM, MBC, SC, ST). Defaults to profile community if omitted."),
     target_course: Optional[str] = Query(None, description="Filter by course e.g. 'B.E. CSE', 'B.Tech AI & DS'"),
     custom_cutoff: Optional[float] = Query(None, description="Simulate with custom TNEA cut-off mark (0-200)"),
     custom_budget: Optional[float] = Query(None, description="Simulate with custom annual budget limit"),

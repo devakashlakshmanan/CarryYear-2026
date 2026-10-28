@@ -77,6 +77,13 @@ class Career(Base):
     work_environment = Column(String(100), default="Hybrid / Tech Hubs")
     higher_studies_options = Column(JSON, default=list)
     alternative_careers = Column(JSON, default=list)
+    
+    # Data Provenance & Verification
+    source_name = Column(String(150), default="NASSCOM / TN Skill Development Mission (TNSDC)")
+    official_source_url = Column(String(255), nullable=True)
+    verification_status = Column(String(50), default="verified") # verified, officially_sourced, historical, synthetic_demo
+    last_verified_at = Column(DateTime(timezone=True), nullable=True, server_default=func.now())
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

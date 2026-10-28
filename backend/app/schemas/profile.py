@@ -14,6 +14,9 @@ class ProfileUpdate(BaseModel):
     district: Optional[str] = None
     city: Optional[str] = None
     current_education_level: Optional[str] = None
+    community: Optional[str] = None  # OC, BC, BCM, MBC, SC, SCA, ST
+    is_first_graduate: Optional[bool] = None
+    is_govt_school: Optional[bool] = None
 
     # Step 2: Academic Profile
     school_or_college: Optional[str] = None
@@ -49,6 +52,7 @@ class ProfileUpdate(BaseModel):
     target_career: Optional[str] = None
     higher_study_interest: Optional[bool] = False
     onboarding_completed: Optional[bool] = True
+    website_preferences: Optional[Dict[str, Any]] = None
 
 class ProfileResponse(BaseModel):
     id: int
@@ -63,6 +67,9 @@ class ProfileResponse(BaseModel):
     district: Optional[str] = None
     city: Optional[str] = None
     current_education_level: Optional[str] = None
+    community: Optional[str] = "OC"
+    is_first_graduate: Optional[bool] = False
+    is_govt_school: Optional[bool] = False
 
     # Step 2
     school_or_college: Optional[str] = None
@@ -98,6 +105,7 @@ class ProfileResponse(BaseModel):
     target_career: Optional[str] = None
     higher_study_interest: Optional[bool] = False
     onboarding_completed: bool = False
+    website_preferences: Dict[str, Any] = {}
 
     created_at: datetime
     updated_at: datetime

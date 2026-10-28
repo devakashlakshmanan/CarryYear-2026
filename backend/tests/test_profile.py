@@ -83,3 +83,65 @@ def test_profile_get_and_update(db):
     # 5. Unauthorized check
     bad_res = client.get("/api/profile")
     assert bad_res.status_code == 401
+
+def test_profile_community_quota_and_password_change(db):
+    # 1. Register student
+    reg_res = client.post("/api/auth/register", json={
+        "name": "Kavitha Rajan",
+        "email": "kavitha_quota_test@carryyear.in",
+        "password": "InitialPassword123!"
+    })
+    assert reg_res.status_code == 201
+    token = reg_res.json()["data"]["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Update community, quota eligibility, and website preferences
+    update_res = client.put("/api/profile", headers=headers, json={
+        "community": "MBC",
+        "is_first_graduate": True,
+        "is_govt_school": True,
+        "percentage_or_cgpa": 94.5,
+        "subject_marks": {"Mathematics": 98.0, "Physics": 92.0, "Chemistry": 94.0},
+        "website_preferences": {
+            "notifications": {"cutoff_alerts": True, "scholarship_alerts": True},
+            "theme": "light_lavender"
+        }
+    })
+    assert update_res.status_code == 200
+    p_data = update_res.json()["data"]
+    assert p_data["community"] == "MBC"
+    assert p_data["is_first_graduate"] is True
+    assert p_data["is_govt_school"] is True
+    assert p_data["website_preferences"]["theme"] == "light_lavender"
+
+    # 3. Verify persistence
+    check_res = client.get("/api/profile", headers=headers)
+    assert check_res.status_code == 200
+    saved = check_res.json()["data"]
+    assert saved["community"] == "MBC"
+    assert saved["is_first_graduate"] is True
+    assert saved["is_govt_school"] is True
+
+    # 4. Test Password Change - Wrong current password
+    fail_pwd = client.post("/api/auth/change-password", headers=headers, json={
+        "current_password": "WrongPassword999!",
+        "new_password": "BrandNewSecurePassword123!"
+    })
+    assert fail_pwd.status_code == 400
+
+    # 5. Test Password Change - Successful
+    success_pwd = client.post("/api/auth/change-password", headers=headers, json={
+        "current_password": "InitialPassword123!",
+        "new_password": "BrandNewSecurePassword123!"
+    })
+    assert success_pwd.status_code == 200
+    assert success_pwd.json()["success"] is True
+
+    # 6. Verify login with new password
+    new_login = client.post("/api/auth/login", json={
+        "email": "kavitha_quota_test@carryyear.in",
+        "password": "BrandNewSecurePassword123!"
+    })
+    assert new_login.status_code == 200
+    assert "access_token" in new_login.json()["data"]
+

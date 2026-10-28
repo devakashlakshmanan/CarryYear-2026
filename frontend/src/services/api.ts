@@ -80,6 +80,13 @@ export const authApi = {
     }
     return res.data.data;
   },
+
+  changePassword: async (payload: { current_password: string; new_password: string }): Promise<void> => {
+    const res = await api.post<ApiResponse<{ user_id: number }>>('/auth/change-password', payload);
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Failed to update password');
+    }
+  },
 };
 
 // Profile Service API endpoints

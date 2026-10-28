@@ -147,7 +147,7 @@ class CollegeService:
     def match_colleges_for_student(
         db: Session,
         user_id: int,
-        quota: str = "OC",
+        quota: Optional[str] = None,
         target_course: Optional[str] = None,
         custom_cutoff: Optional[float] = None,
         custom_budget: Optional[float] = None
@@ -177,7 +177,7 @@ class CollegeService:
                 except (ValueError, TypeError):
                     student_cutoff = 185.0
             elif profile.percentage_or_cgpa:
-                val = profile.percentage_or_cgpa
+                val = float(profile.percentage_or_cgpa)
                 student_cutoff = val * 20.0 if val <= 10.0 else val * 2.0
 
         if custom_budget is not None and custom_budget > 0:
@@ -191,9 +191,12 @@ class CollegeService:
         # Clamp cutoff to realistic range [100.0, 200.0]
         student_cutoff = max(100.0, min(200.0, round(student_cutoff, 2)))
 
-        # Normalize quota
-        quota_clean = quota.upper().strip()
-        if quota_clean not in ["OC", "BC", "BCM", "MBC", "SC", "ST"]:
+        # Normalize quota (use explicit quota if provided, otherwise default to student's verified profile community)
+        if quota and quota.upper().strip() in ["OC", "BC", "BCM", "MBC", "SC", "ST"]:
+            quota_clean = quota.upper().strip()
+        elif profile and profile.community and profile.community.upper().strip() in ["OC", "BC", "BCM", "MBC", "SC", "ST"]:
+            quota_clean = profile.community.upper().strip()
+        else:
             quota_clean = "OC"
 
         # 3. Query all CollegeCourse items

@@ -16,6 +16,10 @@ class StudentProfile(Base):
     district = Column(String(100), nullable=True, index=True)
     city = Column(String(100), nullable=True)
     current_education_level = Column(String(100), nullable=True) # e.g. Class 10, Class 12, Diploma, UG, PG
+    community = Column(String(50), default="OC", nullable=True) # OC, BC, BCM, MBC, SC, SCA, ST
+    is_first_graduate = Column(Boolean, default=False, nullable=True)
+    is_govt_school = Column(Boolean, default=False, nullable=True) # 7.5% TN Govt School quota claim
+    website_preferences = Column(JSON, default=dict, nullable=True) # theme, notification toggles, accessibility
 
     # Step 2: Academic Profile
     school_or_college = Column(String(255), nullable=True)

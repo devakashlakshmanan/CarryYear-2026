@@ -23,6 +23,14 @@ class College(Base):
     campus_facilities = Column(JSON, default=list)
     overview = Column(Text, nullable=True)
     website_url = Column(String(255), nullable=True)
+    
+    # Data Provenance & Verification
+    source_name = Column(String(150), default="DoTE Tamil Nadu / NIRF 2024")
+    official_source_url = Column(String(255), nullable=True)
+    academic_year = Column(String(20), default="2024-2025")
+    verification_status = Column(String(50), default="verified") # verified, officially_sourced, historical, synthetic_demo
+    last_verified_at = Column(DateTime(timezone=True), nullable=True, server_default=func.now())
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -40,6 +48,9 @@ class CollegeCourse(Base):
     cutoff_marks_sc = Column(Float, default=155.0)
     cutoff_marks_st = Column(Float, default=145.0)
     intake_seats = Column(Integer, default=60)
+    cutoff_year = Column(String(20), default="2024")
+    source_name = Column(String(150), default="TNEA Single-Window Counseling")
+    verification_status = Column(String(50), default="verified")
 
     college = relationship("College", back_populates="courses")
     course = relationship("Course")

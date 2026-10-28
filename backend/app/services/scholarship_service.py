@@ -108,18 +108,56 @@ class ScholarshipService:
 
         all_scholarships = db.query(Scholarship).order_by(Scholarship.amount_per_annum.desc()).all()
 
-        # User traits
-        community = (custom_community or "BC").upper()
-        # Default family income: budget * 2.5 if not specified
-        family_income = custom_income if custom_income is not None else 180000.0
-        if profile and profile.max_education_budget and custom_income is None:
-            family_income = min(250000.0, profile.max_education_budget * 2.0)
+        # User traits grounded in authenticated profile
+        if custom_community:
+            community = custom_community.upper().strip()
+        elif profile and profile.community:
+            community = profile.community.upper().strip()
+        else:
+            community = "OC"
 
-        first_grad = is_first_graduate if is_first_graduate is not None else True
-        govt_school = is_govt_school if is_govt_school is not None else False
-        academic_pct = profile.percentage_or_cgpa or 88.0
-        if academic_pct <= 10.0:
-            academic_pct *= 10.0
+        # Resolve family income from custom parameter or profile income bracket / budget
+        if custom_income is not None:
+            family_income = float(custom_income)
+        elif profile and profile.annual_family_income:
+            inc_str = profile.annual_family_income.lower()
+            if "< 2.5" in inc_str or "below 2.5" in inc_str:
+                family_income = 180000.0
+            elif "2.5 - 5" in inc_str or "2.5 to 5" in inc_str:
+                family_income = 350000.0
+            elif "5 - 10" in inc_str:
+                family_income = 700000.0
+            elif "> 10" in inc_str or "above 10" in inc_str:
+                family_income = 1200000.0
+            else:
+                try:
+                    family_income = float(profile.annual_family_income)
+                except ValueError:
+                    family_income = 200000.0
+        elif profile and profile.max_education_budget:
+            family_income = profile.max_education_budget * 2.0
+        else:
+            family_income = 180000.0
+
+        if is_first_graduate is not None:
+            first_grad = bool(is_first_graduate)
+        elif profile and profile.is_first_graduate is not None:
+            first_grad = bool(profile.is_first_graduate)
+        else:
+            first_grad = False
+
+        if is_govt_school is not None:
+            govt_school = bool(is_govt_school)
+        elif profile and profile.is_govt_school is not None:
+            govt_school = bool(profile.is_govt_school)
+        else:
+            govt_school = False
+
+        academic_pct = 75.0
+        if profile and profile.percentage_or_cgpa:
+            academic_pct = float(profile.percentage_or_cgpa)
+            if academic_pct <= 10.0:
+                academic_pct *= 10.0
 
         matches: List[ScholarshipMatchItem] = []
         total_aid = 0.0

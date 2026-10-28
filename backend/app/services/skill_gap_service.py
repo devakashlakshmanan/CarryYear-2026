@@ -48,6 +48,16 @@ class SkillGapService:
             career = None
 
         if not career:
+            try:
+                from app.services.recommendation_service import RecommendationService
+                rec_res = RecommendationService.get_recommendations(db, user_id=user_id)
+                if rec_res.recommendations:
+                    top_id = rec_res.recommendations[0].career_id
+                    career = query.filter(Career.id == top_id).first()
+            except Exception:
+                pass
+
+        if not career:
             career = query.first()
 
         # Extract student's verified skills
